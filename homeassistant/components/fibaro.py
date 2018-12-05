@@ -27,7 +27,8 @@ ATTR_CURRENT_POWER_W = "current_power_w"
 ATTR_CURRENT_ENERGY_KWH = "current_energy_kwh"
 CONF_PLUGINS = "plugins"
 
-FIBARO_COMPONENTS = ['binary_sensor', 'cover', 'light', 'sensor', 'switch']
+FIBARO_COMPONENTS = ['binary_sensor', 'cover', 'light',
+                     'scene', 'sensor', 'switch']
 
 FIBARO_TYPEMAP = {
     'com.fibaro.multilevelSensor': "sensor",
@@ -43,7 +44,8 @@ FIBARO_TYPEMAP = {
     'com.fibaro.smokeSensor': 'binary_sensor',
     'com.fibaro.remoteSwitch': 'switch',
     'com.fibaro.sensor': 'sensor',
-    'com.fibaro.colorController': 'light'
+    'com.fibaro.colorController': 'light',
+    'com.fibaro.securitySensor': 'binary_sensor'
 }
 
 CONFIG_SCHEMA = vol.Schema({
@@ -71,6 +73,7 @@ class FibaroController():
         """Initialize the Fibaro controller."""
         from fiblary3.client.v4.client import Client as FibaroClient
         self._client = FibaroClient(url, username, password)
+        self._scene_map = None
 
     def connect(self):
         """Start the communication with the Fibaro controller."""
@@ -87,6 +90,7 @@ class FibaroController():
 
         self._room_map = {room.id: room for room in self._client.rooms.list()}
         self._read_devices()
+        self._read_scenes()
         return True
 
     def enable_state_handler(self):
@@ -165,6 +169,22 @@ class FibaroController():
                 device.properties.get('isLight', 'false') == 'true':
             device_type = 'light'
         return device_type
+
+    def _read_scenes(self):
+        scenes = self._client.scenes.list()
+        self._scene_map = {}
+        for device in scenes:
+            if not device.visible:
+                continue
+            if device.roomID == 0:
+                room_name = 'Unknown'
+            else:
+                room_name = self._room_map[device.roomID].name
+            device.friendly_name = '{} {}'.format(room_name, device.name)
+            device.ha_id = '{}_{}_{}'.format(
+                slugify(room_name), slugify(device.name), device.id)
+            self._scene_map[device.id] = device
+            self.fibaro_devices['scene'].append(device)
 
     def _read_devices(self):
         """Read and process the device list."""
@@ -283,11 +303,14 @@ class FibaroDevice(Entity):
 
     def call_set_color(self, red, green, blue, white):
         """Set the color of Fibaro device."""
-        color_str = "{},{},{},{}".format(int(red), int(green),
-                                         int(blue), int(white))
+        red = int(max(0, min(255, red)))
+        green = int(max(0, min(255, green)))
+        blue = int(max(0, min(255, blue)))
+        white = int(max(0, min(255, white)))
+        color_str = "{},{},{},{}".format(red, green, blue, white)
         self.fibaro_device.properties.color = color_str
-        self.action("setColor", str(int(red)), str(int(green)),
-                    str(int(blue)), str(int(white)))
+        self.action("setColor", str(red), str(green),
+                    str(blue), str(white))
 
     def action(self, cmd, *args):
         """Perform an action on the Fibaro HC."""
