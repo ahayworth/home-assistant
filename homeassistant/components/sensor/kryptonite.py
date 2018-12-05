@@ -2,8 +2,8 @@
 Support for Nest Temperature Sensors
 """
 from datetime import timedelta, datetime
-from pytz import utc
 import logging
+from pytz import utc
 
 import voluptuous as vol
 
@@ -125,6 +125,7 @@ class KryptoniteData:
 
     async def _login(self):
         """Log in, return auth and transport."""
+        _LOGGER.debug("_login")
         login_url = 'https://home.nest.com/user/login'
         login_data = {
             'username': self._config[CONF_USERNAME],
@@ -147,6 +148,7 @@ class KryptoniteData:
 
     async def update_now(self):
         """Grab new data now."""
+        _LOGGER.debug("update_now")
         fmt = '%a, %d-%b-%Y %H:%M:%S %Z'
         linfo = self._login_info
         if (not linfo
@@ -178,4 +180,5 @@ class KryptoniteData:
 
     async def _async_update(self):
         """Grab new data."""
+        _LOGGER.debug("kryptonite _async_update")
         await self.update_now()
