@@ -17,7 +17,7 @@ from homeassistant.components.notify import (
     BaseNotificationService)
 from homeassistant.const import (CONF_API_KEY, CONF_USERNAME, CONF_ICON)
 
-REQUIREMENTS = ['slacker==0.11.0']
+REQUIREMENTS = ['slacker==0.12.0']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -152,7 +152,7 @@ class SlackNotificationService(BaseNotificationService):
                     req = requests.get(url, timeout=CONF_TIMEOUT)
                 return req.content
 
-            elif local_path:
+            if local_path:
                 # Check whether path is whitelisted in configuration.yaml
                 if self.is_allowed_path(local_path):
                     return open(local_path, 'rb')

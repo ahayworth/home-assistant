@@ -8,35 +8,37 @@ import sys
 import fnmatch
 
 COMMENT_REQUIREMENTS = (
-    'RPi.GPIO',
-    'raspihats',
-    'rpi-rf',
     'Adafruit-DHT',
     'Adafruit_BBIO',
-    'fritzconnection',
-    'pybluez',
+    'avion',
     'beacontools',
+    'blinkt',
     'bluepy',
+    'bme680',
+    'credstash',
+    'decora',
+    'envirophat',
+    'evdev',
+    'face_recognition',
+    'fritzconnection',
+    'i2csense',
     'opencv-python',
+    'py_noaa',
+    'pybluez',
+    'pycups',
+    'PySwitchbot',
+    'pySwitchmate',
+    'python-eq3bt',
     'python-lirc',
     'pyuserinput',
-    'evdev',
-    'pycups',
-    'python-eq3bt',
-    'avion',
-    'decora',
-    'face_recognition',
-    'blinkt',
+    'raspihats',
+    'rpi-rf',
+    'RPi.GPIO',
     'smbus-cffi',
-    'envirophat',
-    'i2csense',
-    'credstash',
-    'bme680',
-    'homekit',
-    'py_noaa',
 )
 
 TEST_REQUIREMENTS = (
+    'aioambient',
     'aioautomatic',
     'aiohttp_cors',
     'aiohue',
@@ -46,10 +48,12 @@ TEST_REQUIREMENTS = (
     'coinmarketcap',
     'defusedxml',
     'dsmr_parser',
+    'eebrightbox',
+    'emulated_roku',
     'enturclient',
     'ephem',
     'evohomeclient',
-    'feedparser',
+    'feedparser-homeassistant',
     'foobot_async',
     'geojson_client',
     'georss_client',
@@ -62,12 +66,14 @@ TEST_REQUIREMENTS = (
     'hdate',
     'holidays',
     'home-assistant-frontend',
+    'homekit',
     'homematicip',
     'influxdb',
     'jsonpath',
     'libpurecoollink',
     'libsoundtouch',
     'luftdaten',
+    'mbddns',
     'mficlient',
     'numpy',
     'paho-mqtt',
@@ -86,6 +92,9 @@ TEST_REQUIREMENTS = (
     'pynx584',
     'pyopenuv',
     'pyotp',
+    'pyps4-homeassistant',
+    'pysmartapp',
+    'pysmartthings',
     'pysonos',
     'pyqwikswitch',
     'PyRMVtransport',
@@ -98,6 +107,8 @@ TEST_REQUIREMENTS = (
     'pyunifi',
     'pyupnp-async',
     'pywebpush',
+    'pyHS100',
+    'PyNaCl',
     'regenmaschine',
     'restrictedpython',
     'rflink',
@@ -110,6 +121,7 @@ TEST_REQUIREMENTS = (
     'sqlalchemy',
     'srpenergy',
     'statsd',
+    'toonapilib',
     'uvcclient',
     'vsure',
     'warrant',
@@ -118,6 +130,8 @@ TEST_REQUIREMENTS = (
     'vultr',
     'YesssSMS',
     'ruamel.yaml',
+    'zigpy-homeassistant',
+    'bellows-homeassistant',
 )
 
 IGNORE_PACKAGES = (
@@ -149,6 +163,10 @@ pycrypto==1000000000.0.0
 
 # Contains code to modify Home Assistant to work around our rules
 python-systemair-savecair==1000000000.0.0
+
+# Newer version causes pylint to take forever
+# https://github.com/timothycrosley/isort/issues/848
+isort==4.3.4
 """
 
 
@@ -209,7 +227,7 @@ def gather_modules():
         for req in module.REQUIREMENTS:
             if req in IGNORE_REQ:
                 continue
-            if '://' in req:
+            if '://' in req and 'pyharmony' not in req:
                 errors.append(
                     "{}[Only pypi dependencies are allowed: {}]".format(
                         package, req))

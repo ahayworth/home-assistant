@@ -1,9 +1,5 @@
-"""
-Support for monitoring the local system.
-
-For more details about this platform, please refer to the documentation at
-https://home-assistant.io/components/sensor.systemmonitor/
-"""
+"""Support for monitoring the local system."""
+from datetime import datetime
 import logging
 import os
 import socket
@@ -16,34 +12,38 @@ from homeassistant.helpers.entity import Entity
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 
-REQUIREMENTS = ['psutil==5.4.8']
+REQUIREMENTS = ['psutil==5.5.1']
 
 _LOGGER = logging.getLogger(__name__)
 
 CONF_ARG = 'arg'
 
 SENSOR_TYPES = {
-    'disk_free': ['Disk free', 'GiB', 'mdi:harddisk'],
-    'disk_use': ['Disk use', 'GiB', 'mdi:harddisk'],
-    'disk_use_percent': ['Disk use (percent)', '%', 'mdi:harddisk'],
-    'ipv4_address': ['IPv4 address', '', 'mdi:server-network'],
-    'ipv6_address': ['IPv6 address', '', 'mdi:server-network'],
-    'last_boot': ['Last boot', '', 'mdi:clock'],
-    'load_15m': ['Load (15m)', ' ', 'mdi:memory'],
-    'load_1m': ['Load (1m)', ' ', 'mdi:memory'],
-    'load_5m': ['Load (5m)', ' ', 'mdi:memory'],
-    'memory_free': ['Memory free', 'MiB', 'mdi:memory'],
-    'memory_use': ['Memory use', 'MiB', 'mdi:memory'],
-    'memory_use_percent': ['Memory use (percent)', '%', 'mdi:memory'],
-    'network_in': ['Network in', 'MiB', 'mdi:server-network'],
-    'network_out': ['Network out', 'MiB', 'mdi:server-network'],
-    'packets_in': ['Packets in', ' ', 'mdi:server-network'],
-    'packets_out': ['Packets out', ' ', 'mdi:server-network'],
-    'process': ['Process', ' ', 'mdi:memory'],
-    'processor_use': ['Processor use', '%', 'mdi:memory'],
-    'swap_free': ['Swap free', 'MiB', 'mdi:harddisk'],
-    'swap_use': ['Swap use', 'MiB', 'mdi:harddisk'],
-    'swap_use_percent': ['Swap use (percent)', '%', 'mdi:harddisk'],
+    'disk_free': ['Disk free', 'GiB', 'mdi:harddisk', None],
+    'disk_use': ['Disk use', 'GiB', 'mdi:harddisk', None],
+    'disk_use_percent': ['Disk use (percent)', '%', 'mdi:harddisk', None],
+    'ipv4_address': ['IPv4 address', '', 'mdi:server-network', None],
+    'ipv6_address': ['IPv6 address', '', 'mdi:server-network', None],
+    'last_boot': ['Last boot', '', 'mdi:clock', 'timestamp'],
+    'load_15m': ['Load (15m)', ' ', 'mdi:memory', None],
+    'load_1m': ['Load (1m)', ' ', 'mdi:memory', None],
+    'load_5m': ['Load (5m)', ' ', 'mdi:memory', None],
+    'memory_free': ['Memory free', 'MiB', 'mdi:memory', None],
+    'memory_use': ['Memory use', 'MiB', 'mdi:memory', None],
+    'memory_use_percent': ['Memory use (percent)', '%', 'mdi:memory', None],
+    'network_in': ['Network in', 'MiB', 'mdi:server-network', None],
+    'network_out': ['Network out', 'MiB', 'mdi:server-network', None],
+    'packets_in': ['Packets in', ' ', 'mdi:server-network', None],
+    'packets_out': ['Packets out', ' ', 'mdi:server-network', None],
+    'throughput_network_in': ['Network throughput in', 'MB/s',
+                              'mdi:server-network', None],
+    'throughput_network_out': ['Network throughput out', 'MB/s',
+                               'mdi:server-network', None],
+    'process': ['Process', ' ', 'mdi:memory', None],
+    'processor_use': ['Processor use', '%', 'mdi:memory', None],
+    'swap_free': ['Swap free', 'MiB', 'mdi:harddisk', None],
+    'swap_use': ['Swap use', 'MiB', 'mdi:harddisk', None],
+    'swap_use_percent': ['Swap use (percent)', '%', 'mdi:harddisk', None],
 }
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
@@ -59,6 +59,8 @@ IO_COUNTER = {
     'network_in': 1,
     'packets_out': 2,
     'packets_in': 3,
+    'throughput_network_out': 0,
+    'throughput_network_in': 1,
 }
 
 IF_ADDRS_FAMILY = {
@@ -89,11 +91,19 @@ class SystemMonitorSensor(Entity):
         self.type = sensor_type
         self._state = None
         self._unit_of_measurement = SENSOR_TYPES[sensor_type][1]
+        if sensor_type in ['throughput_network_out', 'throughput_network_in']:
+            self._last_value = None
+            self._last_update_time = None
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name.rstrip()
+
+    @property
+    def device_class(self):
+        """Return the class of this sensor."""
+        return SENSOR_TYPES[self.type][3]
 
     @property
     def icon(self):
@@ -160,6 +170,22 @@ class SystemMonitorSensor(Entity):
             counters = psutil.net_io_counters(pernic=True)
             if self.argument in counters:
                 self._state = counters[self.argument][IO_COUNTER[self.type]]
+            else:
+                self._state = None
+        elif self.type == 'throughput_network_out' or\
+                self.type == 'throughput_network_in':
+            counters = psutil.net_io_counters(pernic=True)
+            if self.argument in counters:
+                counter = counters[self.argument][IO_COUNTER[self.type]]
+                now = datetime.now()
+                if self._last_value and self._last_value < counter:
+                    self._state = round(
+                        (counter - self._last_value) / 1000**2 /
+                        (now - self._last_update_time).seconds, 3)
+                else:
+                    self._state = None
+                self._last_update_time = now
+                self._last_value = counter
             else:
                 self._state = None
         elif self.type == 'ipv4_address' or self.type == 'ipv6_address':

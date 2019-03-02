@@ -1,9 +1,4 @@
-"""
-Allow to set up simple automation rules via the config file.
-
-For more details about this component, please refer to the documentation at
-https://home-assistant.io/components/automation/
-"""
+"""Allow to set up simple automation rules via the config file."""
 import asyncio
 from functools import partial
 import importlib
@@ -12,7 +7,7 @@ import logging
 import voluptuous as vol
 
 from homeassistant.setup import async_prepare_setup_platform
-from homeassistant.core import CoreState
+from homeassistant.core import CoreState, Context
 from homeassistant.loader import bind_hass
 from homeassistant.const import (
     ATTR_ENTITY_ID, CONF_PLATFORM, STATE_ON, SERVICE_TURN_ON, SERVICE_TURN_OFF,
@@ -94,11 +89,11 @@ PLATFORM_SCHEMA = vol.Schema({
 })
 
 SERVICE_SCHEMA = vol.Schema({
-    vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Optional(ATTR_ENTITY_ID): cv.comp_entity_ids,
 })
 
 TRIGGER_SERVICE_SCHEMA = vol.Schema({
-    vol.Required(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Required(ATTR_ENTITY_ID): cv.comp_entity_ids,
     vol.Optional(ATTR_VARIABLES, default={}): dict,
 })
 
@@ -285,15 +280,21 @@ class AutomationEntity(ToggleEntity, RestoreEntity):
 
         This method is a coroutine.
         """
-        if skip_condition or self._cond_func(variables):
-            self.async_set_context(context)
-            self.hass.bus.async_fire(EVENT_AUTOMATION_TRIGGERED, {
-                ATTR_NAME: self._name,
-                ATTR_ENTITY_ID: self.entity_id,
-            }, context=context)
-            await self._async_action(self.entity_id, variables, context)
-            self._last_triggered = utcnow()
-            await self.async_update_ha_state()
+        if not skip_condition and not self._cond_func(variables):
+            return
+
+        # Create a new context referring to the old context.
+        parent_id = None if context is None else context.id
+        trigger_context = Context(parent_id=parent_id)
+
+        self.async_set_context(trigger_context)
+        self.hass.bus.async_fire(EVENT_AUTOMATION_TRIGGERED, {
+            ATTR_NAME: self._name,
+            ATTR_ENTITY_ID: self.entity_id,
+        }, context=trigger_context)
+        await self._async_action(self.entity_id, variables, trigger_context)
+        self._last_triggered = utcnow()
+        await self.async_update_ha_state()
 
     async def async_will_remove_from_hass(self):
         """Remove listeners when removing automation from HASS."""
@@ -375,7 +376,13 @@ def _async_get_action(hass, config, name):
     async def action(entity_id, variables, context):
         """Execute an action."""
         _LOGGER.info('Executing %s', name)
-        await script_obj.async_run(variables, context)
+
+        try:
+            await script_obj.async_run(variables, context)
+        except Exception as err:  # pylint: disable=broad-except
+            script_obj.async_log_exception(
+                _LOGGER,
+                'Error while executing automation {}'.format(entity_id), err)
 
     return action
 

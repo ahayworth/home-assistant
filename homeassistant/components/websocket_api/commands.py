@@ -3,12 +3,12 @@ import voluptuous as vol
 
 from homeassistant.const import MATCH_ALL, EVENT_TIME_CHANGED
 from homeassistant.core import callback, DOMAIN as HASS_DOMAIN
-from homeassistant.exceptions import Unauthorized, ServiceNotFound
+from homeassistant.exceptions import Unauthorized, ServiceNotFound, \
+    HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.service import async_get_all_descriptions
 
 from . import const, decorators, messages
-
 
 TYPE_CALL_SERVICE = 'call_service'
 TYPE_EVENT = 'event'
@@ -150,6 +150,12 @@ async def handle_call_service(hass, connection, msg):
     except ServiceNotFound:
         connection.send_message(messages.error_message(
             msg['id'], const.ERR_NOT_FOUND, 'Service not found.'))
+    except HomeAssistantError as err:
+        connection.send_message(messages.error_message(
+            msg['id'], const.ERR_HOME_ASSISTANT_ERROR, '{}'.format(err)))
+    except Exception as err:  # pylint: disable=broad-except
+        connection.send_message(messages.error_message(
+            msg['id'], const.ERR_UNKNOWN_ERROR, '{}'.format(err)))
 
 
 @callback

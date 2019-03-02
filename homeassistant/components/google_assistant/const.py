@@ -19,8 +19,6 @@ DEFAULT_EXPOSED_DOMAINS = [
     'media_player', 'scene', 'script', 'switch', 'vacuum', 'lock',
 ]
 DEFAULT_ALLOW_UNLOCK = False
-CLIMATE_MODE_HEATCOOL = 'heatcool'
-CLIMATE_SUPPORTED_MODES = {'heat', 'cool', 'off', 'on', CLIMATE_MODE_HEATCOOL}
 
 PREFIX_TYPES = 'action.devices.types.'
 TYPE_LIGHT = PREFIX_TYPES + 'LIGHT'
@@ -44,3 +42,8 @@ ERR_NOT_SUPPORTED = "notSupported"
 ERR_PROTOCOL_ERROR = 'protocolError'
 ERR_UNKNOWN_ERROR = 'unknownError'
 ERR_FUNCTION_NOT_SUPPORTED = 'functionNotSupported'
+
+# Event types
+EVENT_COMMAND_RECEIVED = 'google_assistant_command_received'
+EVENT_QUERY_RECEIVED = 'google_assistant_query_received'
+EVENT_SYNC_RECEIVED = 'google_assistant_sync_received'

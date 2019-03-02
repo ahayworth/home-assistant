@@ -12,7 +12,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.components.switch import SwitchDevice, PLATFORM_SCHEMA
 from homeassistant.const import CONF_NAME, CONF_MAC
 
-REQUIREMENTS = ['PySwitchbot==0.4']
+REQUIREMENTS = ['PySwitchbot==0.5']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class SwitchBot(SwitchDevice):
 
     def __init__(self, mac, name) -> None:
         """Initialize the Switchbot."""
+        # pylint: disable=import-error, no-member
         import switchbot
         self._state = False
         self._name = name
